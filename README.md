@@ -15,13 +15,7 @@ Terminal chat interface for the OpenRouter free model tier.
 
 ## Installation
 
-### With pip (recommended)
-
-```bash
-pip install cli-gpt
-```
-
-### With pipx
+### With pipx (COMMING SOON)
 
 ```bash
 pipx install cli-gpt
@@ -35,7 +29,7 @@ pip install .
 pipx install .
 ```
 
-## Usage
+## SET UP
 
 Copy `.env.example` to `.env`, fill in your personal `OPENROUTER_API_KEY` (never commit or share it), or export the variable in your shell. Then run:
 
@@ -61,4 +55,9 @@ cli-gpt
 - `/help` – show supported commands.
 - `/quit` or `/exit` – leave the application.
 
-If the assistant replies with `I need to check the web for this.`, the app reminds you that web search is not part of the free mode yet.
+### The limits 
+
+those llms dont have web acces yet so i made then say that they should be honest about it
+
+### Contrubtions
+just fork this repo make your changes and make a PR and i will take a look on it

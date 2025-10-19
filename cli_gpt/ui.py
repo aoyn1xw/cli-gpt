@@ -352,7 +352,7 @@ class ChatApp:
                 lambda: [
                     (
                         "class:footer",
-                        "↑/↓ move • Enter select • Esc/q cancel • / search",
+                        "↑/↓ move • Enter select • Esc cancel • / search",
                     )
                 ]
             ),
@@ -421,8 +421,14 @@ class ChatApp:
             event.app.layout.focus(list_window)
             event.app.invalidate()
 
+        @kb.add("escape", filter=has_focus(search_input_window))
+        def _(event) -> None:
+            nonlocal search_active
+            search_active = False
+            event.app.layout.focus(list_window)
+            event.app.invalidate()
+
         @kb.add("escape")
-        @kb.add("q")
         def _(event) -> None:
             event.app.exit(result=None)
 
