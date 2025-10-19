@@ -39,4 +39,4 @@ where = ["."]
 include = ["cli_gpt*"]
 
 [project.urls]
-Repository = "https://github.com/openrouter-team/cli-gpt"
+Repository = "https://github.com/aoyn1xw/cli-gpt"
