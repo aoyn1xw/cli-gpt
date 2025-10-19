@@ -10,11 +10,15 @@ from typing import Any, Dict, List, Optional, Tuple
 from dotenv import load_dotenv
 from prompt_toolkit import PromptSession
 from prompt_toolkit.application import Application
+from prompt_toolkit.buffer import Buffer
+from prompt_toolkit.filters import Condition, has_focus
 from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.layout import Layout
+from prompt_toolkit.layout import Layout, ScrollOffsets
+from prompt_toolkit.layout.containers import ConditionalContainer, HSplit, VSplit, Window, WindowAlign
+from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from prompt_toolkit.layout.dimension import Dimension
 from prompt_toolkit.patch_stdout import patch_stdout
-from prompt_toolkit.widgets import Button, Dialog, TextArea
+from prompt_toolkit.styles import Style
 from rich.console import Console
 from rich.panel import Panel
 
@@ -24,7 +28,7 @@ from .models import ModelManager
 
 SYSTEM_PROMPT = {
     "role": "system",
-    "content": "you are a General purpose AI assistant. Answer as concisely as possible. BUT DO NOT UP FALSE FACTS IF YOU DONT KNOW THE ANSWER SAY YOU DONT KNOW IT",
+    "content": "you are a General purpose AI assistant. Answer as concisely as possible. BUT DO MAKE UP FALSE FACTS IF YOU DONT KNOW THE ANSWER SAY YOU DONT KNOW IT",
 }
 
 
@@ -240,6 +244,7 @@ class ChatApp:
             yield
 
     def _show_models_popup(self) -> None:
+        """Render an interactive model chooser using prompt_toolkit."""
         models = self.model_manager.list_models()
         if not models:
             self._print_markup(
@@ -248,80 +253,228 @@ class ChatApp:
             )
             return
 
+        # Fallback for plain output or non-TTY environments.
         if not self._use_rich_rendering or not getattr(self.console, "is_terminal", True):
             formatted = "\n".join(
                 f"{'->' if name == self.model_manager.current_model else '  '} {name}"
                 for name in models
             )
-            self.console.print(f"Free models:\n{formatted}")
+            self.console.print(f"Available models:\n{formatted}")
             return
 
-        lines = []
-        for index, model_name in enumerate(models, 1):
-            marker = "->" if model_name == self.model_manager.current_model else "  "
-            lines.append(f"{marker} {index}. {model_name}")
-        text = "\n".join(lines)
+        current_model = self.model_manager.current_model
+        filter_text = ""
+        selected_index = 0
 
-        text_area = TextArea(
-            text=text,
-            read_only=True,
-            focusable=True,
-            scrollbar=True,
+        if current_model in models:
+            selected_index = models.index(current_model)
+
+        # Utilities ---------------------------------------------------------
+        def filtered_models() -> List[str]:
+            if not filter_text:
+                return models
+            needle = filter_text.lower()
+            return [name for name in models if needle in name.lower()]
+
+        def move_selection(delta: int) -> None:
+            nonlocal selected_index
+            items = filtered_models()
+            if not items:
+                selected_index = 0
+                return
+            selected_index = (selected_index + delta) % len(items)
+
+        # Model list view ----------------------------------------------------
+        def render_model_list() -> List[Tuple[str, str]]:
+            items = filtered_models()
+            if not items:
+                return [("class:model-list.empty", " No models match your filter.\n")]
+
+            fragments: List[Tuple[str, str]] = []
+            for idx, name in enumerate(items):
+                # Optional marker for the active model.
+                display = f"{name} (current)" if name == current_model else name
+                style = "class:model-list"
+                if idx == selected_index and name == current_model:
+                    style = "class:model-list.selected-current"
+                elif idx == selected_index:
+                    style = "class:model-list.selected"
+                elif name == current_model:
+                    style = "class:model-list.current"
+                fragments.append((style, f" {display}\n"))
+            return fragments
+
+        list_control = FormattedTextControl(render_model_list, show_cursor=False)
+        list_window = Window(
+            content=list_control,
+            always_hide_cursor=True,
             wrap_lines=False,
-            width=Dimension(preferred=80),
-            height=Dimension(min=10, max=20),
+            height=Dimension(min=8, max=25),
+            allow_scroll_beyond_bottom=False,
+            scroll_offsets=ScrollOffsets(top=2, bottom=2),
+            style="class:model-list-container",
         )
 
-        close_button = Button(text="Close")
-        dialog = Dialog(
-            title="Available Free Models",
-            body=text_area,
-            buttons=[close_button],
-            width=Dimension(preferred=90),
+        # Search/filter bar --------------------------------------------------
+        search_active = False
+        app: Optional[Application] = None
+
+        search_buffer = Buffer()
+        search_input_control = BufferControl(buffer=search_buffer, focusable=True)
+        search_input_window = Window(
+            content=search_input_control,
+            height=1,
+            always_hide_cursor=False,
+            style="class:search.input",
+        )
+        search_bar = ConditionalContainer(
+            VSplit(
+                [
+                    Window(
+                        FormattedTextControl(lambda: [("class:search.prompt", "/ ")]),
+                        width=2,
+                        dont_extend_width=True,
+                    ),
+                    search_input_window,
+                ]
+            ),
+            filter=Condition(lambda: search_active or bool(filter_text)),
         )
 
-        bindings = KeyBindings()
+        # Instruction + footer panels ---------------------------------------
+        title_window = Window(
+            FormattedTextControl(lambda: [("class:title", "Select a Model")]),
+            height=1,
+            align=WindowAlign.CENTER,
+        )
+        hint_window = Window(
+            FormattedTextControl(
+                lambda: [
+                    (
+                        "class:footer",
+                        "↑/↓ move • Enter select • Esc/q cancel • / search",
+                    )
+                ]
+            ),
+            height=1,
+        )
 
-        @bindings.add("escape")
-        @bindings.add("q")
+        def update_filter() -> None:
+            nonlocal filter_text, selected_index
+            filter_text = search_buffer.text.strip()
+            items = filtered_models()
+            if current_model in items:
+                selected_index = items.index(current_model)
+            else:
+                selected_index = min(selected_index, len(items) - 1) if items else 0
+            if app is not None:
+                app.invalidate()
+
+        search_buffer.on_text_changed += lambda _: update_filter()
+
+        # Key bindings -------------------------------------------------------
+        kb = KeyBindings()
+
+        search_focus = has_focus(search_input_window)
+
+        @kb.add("up", filter=~search_focus)
         def _(event) -> None:
-            event.app.exit()
+            event.app.layout.focus(list_window)
+            move_selection(-1)
+            event.app.invalidate()
 
-        @bindings.add("up")
+        @kb.add("down", filter=~search_focus)
         def _(event) -> None:
-            event.app.layout.focus(text_area)
-            text_area.buffer.cursor_up(count=1)
+            event.app.layout.focus(list_window)
+            move_selection(1)
+            event.app.invalidate()
 
-        @bindings.add("down")
+        @kb.add("pageup", filter=~search_focus)
         def _(event) -> None:
-            event.app.layout.focus(text_area)
-            text_area.buffer.cursor_down(count=1)
+            window = list_window
+            info = window.render_info
+            if info:
+                move_selection(-(max(info.window_height - 1, 1)))
+                event.app.invalidate()
 
-        @bindings.add("pageup")
+        @kb.add("pagedown", filter=~search_focus)
         def _(event) -> None:
-            event.app.layout.focus(text_area)
-            window = text_area.window
-            render_info = window.render_info
-            if render_info:
-                text_area.buffer.cursor_up(count=max(render_info.window_height - 1, 1))
+            window = list_window
+            info = window.render_info
+            if info:
+                move_selection(max(info.window_height - 1, 1))
+                event.app.invalidate()
 
-        @bindings.add("pagedown")
+        @kb.add("/")
         def _(event) -> None:
-            event.app.layout.focus(text_area)
-            window = text_area.window
-            render_info = window.render_info
-            if render_info:
-                text_area.buffer.cursor_down(count=max(render_info.window_height - 1, 1))
+            nonlocal search_active
+            search_active = True
+            # Seed the input with the current filter text.
+            search_buffer.text = filter_text
+            event.app.layout.focus(search_input_window)
+            event.app.invalidate()
 
-        app = Application(
-            layout=Layout(dialog, focused_element=text_area),
-            key_bindings=bindings,
+        @kb.add("enter", filter=has_focus(search_input_window))
+        def _(event) -> None:
+            nonlocal search_active
+            search_active = False
+            event.app.layout.focus(list_window)
+            event.app.invalidate()
+
+        @kb.add("escape")
+        @kb.add("q")
+        def _(event) -> None:
+            event.app.exit(result=None)
+
+        @kb.add("enter", filter=~search_focus)
+        def _(event) -> None:
+            items = filtered_models()
+            if not items:
+                return
+            event.app.exit(result=items[selected_index])
+
+        @kb.add("c-c")
+        def _(event) -> None:  # pragma: no cover - user convenience
+            event.app.exit(result=None)
+
+        # Compose layout -----------------------------------------------------
+        container = HSplit(
+            [
+                title_window,
+                search_bar,
+                list_window,
+                hint_window,
+            ],
+            padding=1,
+        )
+
+        style = Style.from_dict(
+            {
+                "title": "bold",
+                "model-list": "",
+                "model-list-container": "",
+                "model-list.current": "fg:cyan",
+                "model-list.selected": "reverse",
+                "model-list.selected-current": "reverse fg:cyan",
+                "model-list.empty": "italic #888888",
+                "search.prompt": "fg:#888888",
+                "search.input": "",
+                "footer": "fg:#888888",
+            }
+        )
+
+        app: Optional[Application] = Application(
+            layout=Layout(container, focused_element=list_window),
+            key_bindings=kb,
             full_screen=True,
-            mouse_support=True,
+            style=style,
         )
 
-        close_button.handler = app.exit
-        app.run()
+        # Run the popup and react to the result.
+        chosen_model = app.run()
+        if chosen_model:
+            self.model_manager.set_model(chosen_model)
+            self._print_status("Ready")
 
 
 def _timestamp() -> str:
