@@ -11,8 +11,8 @@ from .models import ModelManager
 HELP_TEXT = (
     "/model [name]  Switch to a different free model\n"
     "/list          List available free models\n"
-    "/clear         Clear chat history (keeps system prompt)\n"
-    "/help          Show this help\n"
+    "/clear         Clear chat history\n"
+    "/help          really?\n"
     "/quit, /exit   Exit the application"
 )
 

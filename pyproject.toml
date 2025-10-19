@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "cli-gpt"
 version = "0.2.0"
 description = "Terminal chat app to Chat with Modern LLMs"
-authors = [{name = "CLI Chat"}]
+authors = [{ name = "ayon1xw", email = "ayon1xw@proton.me" }]
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [

@@ -287,7 +287,7 @@ class ChatApp:
             event.app.exit()
 
         app = Application(
-            layout=Layout(dialog),
+            layout=Layout(dialog, focused_element=text_area),
             key_bindings=bindings,
             full_screen=True,
         )
