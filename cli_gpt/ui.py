@@ -265,6 +265,7 @@ class ChatApp:
         text_area = TextArea(
             text=text,
             read_only=True,
+            focusable=True,
             scrollbar=True,
             wrap_lines=False,
             width=Dimension(preferred=80),
@@ -286,10 +287,37 @@ class ChatApp:
         def _(event) -> None:
             event.app.exit()
 
+        @bindings.add("up")
+        def _(event) -> None:
+            event.app.layout.focus(text_area)
+            text_area.buffer.cursor_up(count=1)
+
+        @bindings.add("down")
+        def _(event) -> None:
+            event.app.layout.focus(text_area)
+            text_area.buffer.cursor_down(count=1)
+
+        @bindings.add("pageup")
+        def _(event) -> None:
+            event.app.layout.focus(text_area)
+            window = text_area.window
+            render_info = window.render_info
+            if render_info:
+                text_area.buffer.cursor_up(count=max(render_info.window_height - 1, 1))
+
+        @bindings.add("pagedown")
+        def _(event) -> None:
+            event.app.layout.focus(text_area)
+            window = text_area.window
+            render_info = window.render_info
+            if render_info:
+                text_area.buffer.cursor_down(count=max(render_info.window_height - 1, 1))
+
         app = Application(
             layout=Layout(dialog, focused_element=text_area),
             key_bindings=bindings,
             full_screen=True,
+            mouse_support=True,
         )
 
         close_button.handler = app.exit

@@ -13,7 +13,7 @@ HELP_TEXT = (
     "/list          List available free models\n"
     "/clear         Clear chat history\n"
     "/help          really?\n"
-    "/quit, /exit   Exit the application"
+    "/quit, /exit   take a wild guess?"
 )
 
 
