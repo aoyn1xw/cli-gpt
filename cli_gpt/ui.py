@@ -187,18 +187,24 @@ class ChatApp:
         else:
             self.console.print(plain_text)
 
-    def _refresh_models_from_api(self) -> None:
+    def _refresh_models_from_api(self, *, notify: bool = False) -> None:
+        def emit_message(rich_text: str, plain_text: str) -> None:
+            if notify:
+                self._print_markup(rich_text, plain_text)
+            else:
+                self._queue_startup_message(rich_text, plain_text)
+
         try:
             models = self.client.list_models(free_only=True)
         except Exception as exc:  # pragma: no cover - runtime errors
-            self._queue_startup_message(
+            emit_message(
                 "[bold yellow]Warning:[/bold yellow] Could not refresh free model catalogue.",
                 f"Warning: Could not refresh free model catalogue: {exc}",
             )
             return
 
         if not models:
-            self._queue_startup_message(
+            emit_message(
                 "[bold yellow]Warning:[/bold yellow] OpenRouter did not return any free models.",
                 "Warning: OpenRouter did not return any free models.",
             )
@@ -207,7 +213,7 @@ class ChatApp:
         previous_model = self.model_manager.current_model
         self.model_manager.replace_models(models)
         if self.model_manager.current_model != previous_model:
-            self._queue_startup_message(
+            emit_message(
                 (
                     "[bold yellow]Notice:[/bold yellow] Switched to "
                     f"{self.model_manager.current_model} (requested model unavailable)."
@@ -245,6 +251,7 @@ class ChatApp:
 
     def _show_models_popup(self) -> None:
         """Render an interactive model chooser using prompt_toolkit."""
+        self._refresh_models_from_api(notify=True)
         models = self.model_manager.list_models()
         if not models:
             self._print_markup(
