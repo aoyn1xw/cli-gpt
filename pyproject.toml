@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cli-gpt"
-version = "0.2.0"
+version = "1.0.0"
 description = "Terminal chat app to Chat with Modern LLMs"
 authors = [{ name = "ayon1xw", email = "ayon1xw@proton.me" }]
 readme = "README.md"

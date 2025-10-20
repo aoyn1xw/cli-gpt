@@ -7,6 +7,6 @@ from .models import DEFAULT_MODEL, FREE_MODELS  # noqa: F401
 try:
     __version__ = metadata.version("cli-gpt")
 except metadata.PackageNotFoundError:  # pragma: no cover - running from source without install
-    __version__ = "0.2.0"
+    __version__ = "1.0.0"
 
 __all__ = ["__version__", "DEFAULT_MODEL", "FREE_MODELS"]
