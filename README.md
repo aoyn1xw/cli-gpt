@@ -1,63 +1,75 @@
 # cli-gpt
 
-Terminal chat interface for the OpenRouter free model tier.
+Terminal chat interface for OpenRouter’s free-tier models.
 
 ## Features
 
-- Works with predefined free OpenRouter models.
-- Automatically refreshes the free model catalogue from OpenRouter at startup (falls back to bundled list when offline).
-- Persists conversation context with a safety system prompt.
-- Slash commands for listing and switching models, clearing history, and exiting.
-- Terminal UI with coloured chat log and status panel.
-- Shows a live typing indicator while the assistant generates responses.
-- Launches in full-screen mode for an immersive terminal experience (disable with `--no-fullscreen`).
-- `/list` opens a scrollable popup (falls back to plain output when a pager isn't available).
+- Auto-refreshes the latest free model catalogue from OpenRouter on startup and whenever `/list` is opened, falling back to the bundled list if the API is unavailable.
+- Interactive model switcher with arrow-key navigation, search-as-you-type filtering, and enter-to-select; `/list` downgrades gracefully to plain text when colours/TTY are unavailable.
+- Persists the system prompt and conversation history until you clear it, so multi-turn chats remain coherent.
+- Rich terminal presentation: status panel, coloured chat log, typing indicator while replies stream, and full-screen layout (toggle with `--no-fullscreen`).
+- Slash commands for model management, help, clearing history, and quick exits.
+- Ships with a `.env.example` for safe API key management and supports override variables (`OPENROUTER_API_URL`, `OPENROUTER_MODELS_URL`, etc.).
 
 ## Installation
-
-### With pipx (COMMING SOON)
-
-```bash
-pipx install cli-gpt
-```
 
 ### From a local checkout
 
 ```bash
-pip install .
-# or
-pipx install .
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
 ```
 
-## SET UP
+> ℹ️ Publishing to PyPI/pipx is coming soon. In the meantime you can build distributables locally (see below) and install them with `pipx install dist/cli_gpt-*.whl`.
 
-Copy `.env.example` to `.env`, fill in your personal `OPENROUTER_API_KEY` (never commit or share it), or export the variable in your shell. Then run:
+## Setup & Usage
 
-```bash
-cli-gpt
-```
+1. Copy the example environment file and add your OpenRouter key:
+   ```bash
+   cp .env.example .env
+   echo 'OPENROUTER_API_KEY=your-key-here' >> .env
+   ```
+2. Launch the app:
+   ```bash
+   cli-gpt
+   ```
+
+The models listed in the selector are sourced live from the OpenRouter API. There is currently no web browsing capability; when a model cannot answer it will explicitly state so rather than fabricating information.
 
 ### CLI options
 
-- `--list-models` – show available models and exit.
-- `--model <name>` – start the session on a specific model.
-- `--plain` – disable rich formatting (useful for minimal terminals).
-- `--timeout <seconds>` – override the default 45 second request timeout.
-- `--api-key <value>` – provide the API key directly without setting an env var.
-- `--fullscreen` / `--no-fullscreen` – force or disable full-screen terminal mode.
+- `--list-models` – print the available models and exit.
+- `--model <name>` – start on a specific model from the free tier.
+- `--plain` – disable Rich formatting for minimal output.
+- `--timeout <seconds>` – override the 45 second request timeout.
+- `--api-key <value>` – provide an API key without using environment variables.
+- `--fullscreen` / `--no-fullscreen` – force or disable full-screen mode.
 - `--version` – print the application version and exit.
 
-### Commands
+### Commands inside the app
 
-- `/list` – list available models.
-- `/model <name>` – switch to another free model.
-- `/clear` – clear chat history (system prompt is kept).
-- `/help` – show supported commands.
+- `/list` – open the interactive model selector.
+- `/model <name>` – switch directly to another free model.
+- `/clear` – clear chat history (retains the system prompt).
+- `/help` – show available commands.
 - `/quit` or `/exit` – leave the application.
 
-### The limits 
+## Building distributables (for pip/pipx)
 
-those llms dont have web acces yet so i made then say that they should be honest about it
+```bash
+source .venv/bin/activate
+python -m build
+```
 
-### Contrubtions
-just fork this repo make your changes and make a PR and i will take a look on it
+This produces `dist/cli_gpt-<version>.tar.gz` and the matching wheel. Test installation with:
+
+```bash
+pipx install dist/cli_gpt-<version>-py3-none-any.whl
+```
+
+Publish with `python -m twine upload dist/*` once you are ready.
+
+## Contributing
+
+Fork the repository, make your changes on a branch, and open a pull request. Please keep secrets out of commits (`.env` is ignored by default) and run `pip install -e .` to ensure the CLI still boots before submitting. Suggestions, bug reports, and feature ideas are all welcome!*** End Patch
