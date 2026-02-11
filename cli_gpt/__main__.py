@@ -7,21 +7,15 @@ import sys
 from typing import Sequence
 
 from . import __version__
-from .api import MissingAPIKeyError, OpenRouterClient, get_api_key
+from .api import fetch_models_catalogue
 from .models import FREE_MODELS
 from .ui import run_cli
 
 
-def _fetch_free_models_for_cli(api_key: str | None) -> list[str]:
-    if api_key is None:
-        try:
-            api_key = get_api_key()
-        except MissingAPIKeyError:
-            return list(FREE_MODELS)
-
-    client = OpenRouterClient(api_key=api_key)
+def _fetch_free_models_for_cli(api_key: str | None, timeout: int | None) -> list[str]:
+    resolved_timeout = timeout if timeout is not None else 45
     try:
-        models = client.list_models(free_only=True)
+        models = fetch_models_catalogue(api_key=api_key, timeout=resolved_timeout, free_only=True)
     except Exception:
         return list(FREE_MODELS)
 
@@ -85,7 +79,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("--timeout must be greater than zero seconds.")
 
     if args.list_models:
-        for name in _fetch_free_models_for_cli(args.api_key):
+        for name in _fetch_free_models_for_cli(args.api_key, args.timeout):
             print(name)
         return 0
 
