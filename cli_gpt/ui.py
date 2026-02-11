@@ -21,6 +21,7 @@ from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.styles import Style
 from rich.console import Console
 from rich.panel import Panel
+from rich.text import Text
 
 from .api import MissingAPIKeyError, OpenRouterClient, get_api_key
 from .commands import CommandProcessor
@@ -28,7 +29,7 @@ from .models import ModelManager
 
 SYSTEM_PROMPT = {
     "role": "system",
-    "content": "you are a General purpose AI assistant. Answer as concisely as possible. BUT DO MAKE UP FALSE FACTS IF YOU DONT KNOW THE ANSWER SAY YOU DONT KNOW IT",
+    "content": "You are a helpful assistant. If you are unsure, say so clearly and do not fabricate facts.",
 }
 
 
@@ -69,8 +70,7 @@ class ChatApp:
         self.console = _create_console(plain_output)
         self.session = session or PromptSession()
         self.model_manager = ModelManager()
-        if initial_model:
-            self.model_manager.set_model(initial_model)
+        self._requested_initial_model = initial_model
         self.state = ChatState()
         self.command_processor = CommandProcessor(self.model_manager)
         self._startup_messages: List[Tuple[str, str]] = []
@@ -97,11 +97,12 @@ class ChatApp:
 
     def run(self) -> None:
         with patch_stdout(raw=True):
+            self._print_welcome()
             self._print_status("Ready")
             self._flush_startup_messages()
             while True:
                 try:
-                    user_input = self.session.prompt("> ")
+                    user_input = self.session.prompt("❯ ")
                 except KeyboardInterrupt:
                     self._print_markup(
                         "[bold yellow]Input cancelled. Type /quit to exit.[/bold yellow]",
@@ -121,12 +122,12 @@ class ChatApp:
                     if command_result.show_models:
                         self._show_models_popup()
                     if command_result.message:
-                        self.console.print(command_result.message)
+                        self._print_info_message(command_result.message)
                     if command_result.clear_history:
                         self.state.reset()
                     if command_result.exit:
                         break
-                    if stripped.startswith("/model"):
+                    if stripped.startswith("/switch") or stripped.startswith("/model"):
                         self._print_status("Ready")
                     continue
 
@@ -160,8 +161,11 @@ class ChatApp:
         model = self.model_manager.current_model
         if self._use_rich_rendering:
             panel = Panel.fit(
-                f"Model: [bold]{model}[/bold] | Status: [bold]{status}[/bold]",
-                style="cyan",
+                f"[bold #6ee7ff]Model[/bold #6ee7ff]: {model}\n"
+                f"[bold #34d399]Status[/bold #34d399]: {status}",
+                title="cli-gpt",
+                border_style="#334155",
+                padding=(0, 1),
             )
             self.console.print(panel)
         else:
@@ -170,16 +174,45 @@ class ChatApp:
     def _print_user_message(self, content: str) -> None:
         timestamp = _timestamp()
         if self._use_rich_rendering:
-            self.console.print(f"[{timestamp}] [bold blue]You[/bold blue]: {content}")
+            self.console.print(
+                Panel(
+                    content,
+                    title="You",
+                    subtitle=f"{timestamp}",
+                    border_style="#2563eb",
+                    padding=(0, 1),
+                )
+            )
         else:
             self.console.print(f"[{timestamp}] You: {content}")
 
     def _print_ai_message(self, content: str) -> None:
         timestamp = _timestamp()
         if self._use_rich_rendering:
-            self.console.print(f"[{timestamp}] [bold cyan]AI[/bold cyan]: {content}")
+            self.console.print(
+                Panel(
+                    content,
+                    title="Assistant",
+                    subtitle=f"{timestamp}",
+                    border_style="#14b8a6",
+                    padding=(0, 1),
+                )
+            )
         else:
             self.console.print(f"[{timestamp}] AI: {content}")
+
+    def _print_info_message(self, message: str) -> None:
+        if self._use_rich_rendering:
+            self.console.print(
+                Panel(
+                    message,
+                    title="Info",
+                    border_style="#64748b",
+                    padding=(0, 1),
+                )
+            )
+        else:
+            self.console.print(message)
 
     def _print_markup(self, rich_text: str, plain_text: str) -> None:
         if self._use_rich_rendering:
@@ -201,6 +234,7 @@ class ChatApp:
                 "[bold yellow]Warning:[/bold yellow] Could not refresh free model catalogue.",
                 f"Warning: Could not refresh free model catalogue: {exc}",
             )
+            self._apply_requested_initial_model(emit_message)
             return
 
         if not models:
@@ -208,10 +242,14 @@ class ChatApp:
                 "[bold yellow]Warning:[/bold yellow] OpenRouter did not return any free models.",
                 "Warning: OpenRouter did not return any free models.",
             )
+            self._apply_requested_initial_model(emit_message)
             return
 
         previous_model = self.model_manager.current_model
         self.model_manager.replace_models(models)
+
+        self._apply_requested_initial_model(emit_message)
+
         if self.model_manager.current_model != previous_model:
             emit_message(
                 (
@@ -224,8 +262,46 @@ class ChatApp:
                 ),
             )
 
+    def _apply_requested_initial_model(self, emit_message) -> None:
+        if not self._requested_initial_model:
+            return
+
+        requested_model = self._requested_initial_model
+        self._requested_initial_model = None
+
+        if requested_model in self.model_manager.list_models():
+            self.model_manager.set_model(requested_model)
+            return
+
+        emit_message(
+            (
+                "[bold yellow]Notice:[/bold yellow] Requested model not available "
+                f"in free tier: {requested_model}"
+            ),
+            f"Notice: Requested model not available in free tier: {requested_model}",
+        )
+
     def _queue_startup_message(self, rich_text: str, plain_text: str) -> None:
         self._startup_messages.append((rich_text, plain_text))
+
+    def _print_welcome(self) -> None:
+        if not self._use_rich_rendering:
+            self.console.print("cli-gpt — type /help for commands")
+            return
+
+        title = Text("cli-gpt", style="bold #e2e8f0")
+        subtitle = Text("OpenRouter chat in your terminal", style="#94a3b8")
+        commands = Text(
+            "Commands: /help  /switch  /new  /quit",
+            style="#cbd5e1",
+        )
+        self.console.print(
+            Panel.fit(
+                Text.assemble(title, "\n", subtitle, "\n", commands),
+                border_style="#475569",
+                padding=(0, 1),
+            )
+        )
 
     def _flush_startup_messages(self) -> None:
         for rich, plain in self._startup_messages:
@@ -350,7 +426,7 @@ class ChatApp:
 
         # Instruction + footer panels ---------------------------------------
         title_window = Window(
-            FormattedTextControl(lambda: [("class:title", "Select a Model")]),
+            FormattedTextControl(lambda: [("class:title", "Switch Model")]),
             height=1,
             align=WindowAlign.CENTER,
         )
@@ -465,14 +541,14 @@ class ChatApp:
             {
                 "title": "bold",
                 "model-list": "",
-                "model-list-container": "",
-                "model-list.current": "fg:cyan",
-                "model-list.selected": "reverse",
-                "model-list.selected-current": "reverse fg:cyan",
-                "model-list.empty": "italic #888888",
-                "search.prompt": "fg:#888888",
+                "model-list-container": "bg:#0f172a",
+                "model-list.current": "fg:#22d3ee",
+                "model-list.selected": "bg:#1e293b",
+                "model-list.selected-current": "bg:#1e293b fg:#22d3ee",
+                "model-list.empty": "italic #94a3b8",
+                "search.prompt": "fg:#94a3b8",
                 "search.input": "",
-                "footer": "fg:#888888",
+                "footer": "fg:#94a3b8",
             }
         )
 

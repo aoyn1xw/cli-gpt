@@ -4,11 +4,11 @@ Terminal chat interface for OpenRouter’s free-tier models.
 
 ## Features
 
-- Auto-refreshes the latest free model catalogue from OpenRouter on startup and whenever `/list` is opened, falling back to the bundled list if the API is unavailable.
-- Interactive model switcher with arrow-key navigation, search-as-you-type filtering, and enter-to-select; `/list` downgrades gracefully to plain text when colours/TTY are unavailable.
+- Auto-refreshes the latest free model catalogue from OpenRouter on startup and whenever `/switch` opens the model selector, falling back to the bundled list if the API is unavailable.
+- Interactive model switcher with arrow-key navigation, search-as-you-type filtering, and enter-to-select; `/switch` downgrades gracefully to plain text when colours/TTY are unavailable.
 - Persists the system prompt and conversation history until you clear it, so multi-turn chats remain coherent.
 - Rich terminal presentation: status panel, coloured chat log, typing indicator while replies stream, and full-screen layout (toggle with `--no-fullscreen`).
-- Slash commands for model management, help, clearing history, and quick exits.
+- Simple slash commands: `/help`, `/switch`, `/new`, and `/quit`.
 - Ships with a `.env.example` for safe API key management and supports override variables (`OPENROUTER_API_URL`, `OPENROUTER_MODELS_URL`, etc.).
 
 ## Installation
@@ -49,11 +49,11 @@ The models listed in the selector are sourced live from the OpenRouter API. Ther
 
 ### Commands inside the app
 
-- `/list` – open the interactive model selector.
-- `/model <name>` – switch directly to another free model.
-- `/clear` – clear chat history (retains the system prompt).
 - `/help` – show available commands.
-- `/quit` or `/exit` – leave the application.
+- `/switch` – open the interactive model selector.
+- `/switch <name>` – switch directly to a model by name.
+- `/new` – start a new chat (clears history, keeps the system prompt).
+- `/quit` (or `/exit`) – leave the application.
 
 ## Building distributables (for pip/pipx)
 
@@ -72,4 +72,4 @@ Publish with `python -m twine upload dist/*` once you are ready.
 
 ## Contributing
 
-Fork the repository, make your changes on a branch, and open a pull request. Please keep secrets out of commits (`.env` is ignored by default) and run `pip install -e .` to ensure the CLI still boots before submitting. Suggestions, bug reports, and feature ideas are all welcome!*** End Patch
+Fork the repository, make your changes on a branch, and open a pull request. Please keep secrets out of commits (`.env` is ignored by default) and run `pip install -e .` to ensure the CLI still boots before submitting. Suggestions, bug reports, and feature ideas are all welcome!
