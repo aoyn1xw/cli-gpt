@@ -28,7 +28,7 @@ from .models import ModelManager
 
 SYSTEM_PROMPT = {
     "role": "system",
-    "content": "you are a General purpose AI assistant. Answer as concisely as possible. BUT DO MAKE UP FALSE FACTS IF YOU DONT KNOW THE ANSWER SAY YOU DONT KNOW IT",
+    "content": "You are a helpful assistant. If you are unsure, say so clearly and do not fabricate facts.",
 }
 
 
@@ -126,7 +126,7 @@ class ChatApp:
                         self.state.reset()
                     if command_result.exit:
                         break
-                    if stripped.startswith("/model"):
+                    if stripped.startswith("/switch") or stripped.startswith("/model"):
                         self._print_status("Ready")
                     continue
 
@@ -359,7 +359,7 @@ class ChatApp:
                 lambda: [
                     (
                         "class:footer",
-                        "↑/↓ move • Enter select • Esc cancel • / search",
+                        "↑/↓ move • Enter select • Esc cancel • / search • /help",
                     )
                 ]
             ),

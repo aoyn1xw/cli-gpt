@@ -9,11 +9,11 @@ from .models import ModelManager
 
 
 HELP_TEXT = (
-    "/model [name]  Switch to a different free model\n"
-    "/list          List available free models\n"
-    "/clear         Clear chat history\n"
-    "/help          really?\n"
-    "/quit, /exit   take a wild guess?"
+    "Available commands:\n"
+    "/help            Show this help message\n"
+    "/switch [model]  Switch to another model (no argument opens selector)\n"
+    "/new             Start a new chat (clears message history)\n"
+    "/quit            Exit cli-gpt"
 )
 
 
@@ -47,22 +47,23 @@ class CommandProcessor:
             return CommandResult(handled=True, exit=True)
         if command == "help":
             return CommandResult(handled=True, message=HELP_TEXT)
+        if command in {"switch", "model"}:
+            return self._handle_switch(argument)
+        if command in {"new", "clear"}:
+            return CommandResult(handled=True, clear_history=True, message="Started a new chat.")
         if command == "list":
-            return CommandResult(handled=True, show_models=True)
-        if command == "model":
-            return self._handle_model(argument)
-        if command == "clear":
-            return CommandResult(handled=True, clear_history=True, message="Chat history cleared.")
+            return CommandResult(
+                handled=True,
+                show_models=True,
+                message="Tip: use /switch to pick a model.",
+            )
 
         return CommandResult(handled=True, message=f"Unknown command: /{command}. Type /help.")
 
-    def _handle_model(self, argument: str) -> CommandResult:
+    def _handle_switch(self, argument: str) -> CommandResult:
         if not argument:
-            current = self.model_manager.current_model
-            return CommandResult(
-                handled=True,
-                message=f"Current model: {current}\nUse /model <name> to switch.",
-            )
+            return CommandResult(handled=True, show_models=True)
+
         try:
             self.model_manager.set_model(argument)
         except ValueError as exc:
