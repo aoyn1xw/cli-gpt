@@ -114,7 +114,7 @@ class OpenRouterClient:
             model_id = item.get("id")
             if not isinstance(model_id, str):
                 continue
-            if free_only and not _is_model_free(item.get("pricing")):
+            if free_only and not _is_model_free(model_id=model_id, pricing=item.get("pricing")):
                 continue
             models.append(model_id)
 
@@ -151,7 +151,9 @@ def get_api_key() -> str:
     return key
 
 
-def _is_model_free(pricing: Any) -> bool:
+def _is_model_free(*, model_id: str, pricing: Any) -> bool:
+    if model_id.lower().endswith(":free"):
+        return True
     if not isinstance(pricing, dict):
         return False
     prompt_price = pricing.get("prompt")

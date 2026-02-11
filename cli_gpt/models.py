@@ -5,17 +5,9 @@ from typing import Iterable, List
 
 FREE_MODELS: List[str] = [
     "qwen/qwen3-235b-a22b:free",
-    "ArliAI/QwQ-32B-RpR-v1",
-    "Google/Gemma-2-9B",
-    "Google/Gemma-3-12B",
-    "Google/Gemma-3n-2B",
-    "Google/Gemma-3-4B",
-    "Google/Gemma-3n-4B",
-    "Tencent/Hunyuan-A13B-Instruct",
-    "Agentica/Deepcoder-14B-Preview",
 ]
 
-DEFAULT_MODEL: str = "qwen/qwen3-235b-a22b:free"
+DEFAULT_MODEL: str = FREE_MODELS[0]
 
 
 @dataclass

@@ -4,8 +4,8 @@ Terminal chat interface for OpenRouter’s free-tier models.
 
 ## Features
 
-- Auto-refreshes the latest free model catalogue from OpenRouter on startup and whenever `/list` is opened, falling back to the bundled list if the API is unavailable.
-- Interactive model switcher with arrow-key navigation, search-as-you-type filtering, and enter-to-select; `/list` downgrades gracefully to plain text when colours/TTY are unavailable.
+- Auto-refreshes the latest free model catalogue from OpenRouter on startup and whenever `/switch` opens the model selector, falling back to the bundled list if the API is unavailable.
+- Interactive model switcher with arrow-key navigation, search-as-you-type filtering, and enter-to-select; `/switch` downgrades gracefully to plain text when colours/TTY are unavailable.
 - Persists the system prompt and conversation history until you clear it, so multi-turn chats remain coherent.
 - Rich terminal presentation: status panel, coloured chat log, typing indicator while replies stream, and full-screen layout (toggle with `--no-fullscreen`).
 - Simple slash commands: `/help`, `/switch`, `/new`, and `/quit`.

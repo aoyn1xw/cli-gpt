@@ -10,10 +10,10 @@ from .models import ModelManager
 
 HELP_TEXT = (
     "Available commands:\n"
-    "/help            Show this help message\n"
+    "/help          really?\n"
     "/switch [model]  Switch to another model (no argument opens selector)\n"
     "/new             Start a new chat (clears message history)\n"
-    "/quit            Exit cli-gpt"
+    "/quit, /exit   take a wild guess?"
 )
 
 

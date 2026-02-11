@@ -70,8 +70,7 @@ class ChatApp:
         self.console = _create_console(plain_output)
         self.session = session or PromptSession()
         self.model_manager = ModelManager()
-        if initial_model:
-            self.model_manager.set_model(initial_model)
+        self._requested_initial_model = initial_model
         self.state = ChatState()
         self.command_processor = CommandProcessor(self.model_manager)
         self._startup_messages: List[Tuple[str, str]] = []
@@ -235,6 +234,7 @@ class ChatApp:
                 "[bold yellow]Warning:[/bold yellow] Could not refresh free model catalogue.",
                 f"Warning: Could not refresh free model catalogue: {exc}",
             )
+            self._apply_requested_initial_model(emit_message)
             return
 
         if not models:
@@ -242,10 +242,14 @@ class ChatApp:
                 "[bold yellow]Warning:[/bold yellow] OpenRouter did not return any free models.",
                 "Warning: OpenRouter did not return any free models.",
             )
+            self._apply_requested_initial_model(emit_message)
             return
 
         previous_model = self.model_manager.current_model
         self.model_manager.replace_models(models)
+
+        self._apply_requested_initial_model(emit_message)
+
         if self.model_manager.current_model != previous_model:
             emit_message(
                 (
@@ -257,6 +261,25 @@ class ChatApp:
                     f"{self.model_manager.current_model} (requested model unavailable)."
                 ),
             )
+
+    def _apply_requested_initial_model(self, emit_message) -> None:
+        if not self._requested_initial_model:
+            return
+
+        requested_model = self._requested_initial_model
+        self._requested_initial_model = None
+
+        if requested_model in self.model_manager.list_models():
+            self.model_manager.set_model(requested_model)
+            return
+
+        emit_message(
+            (
+                "[bold yellow]Notice:[/bold yellow] Requested model not available "
+                f"in free tier: {requested_model}"
+            ),
+            f"Notice: Requested model not available in free tier: {requested_model}",
+        )
 
     def _queue_startup_message(self, rich_text: str, plain_text: str) -> None:
         self._startup_messages.append((rich_text, plain_text))
