@@ -72,4 +72,4 @@ Publish with `python -m twine upload dist/*` once you are ready.
 
 ## Contributing
 
-Fork the repository, make your changes on a branch, and open a pull request. Please keep secrets out of commits (`.env` is ignored by default) and run `pip install -e .` to ensure the CLI still boots before submitting. Suggestions, bug reports, and feature ideas are all welcome!*** End Patch
+Fork the repository, make your changes on a branch, and open a pull request. Please keep secrets out of commits (`.env` is ignored by default) and run `pip install -e .` to ensure the CLI still boots before submitting. Suggestions, bug reports, and feature ideas are all welcome!
