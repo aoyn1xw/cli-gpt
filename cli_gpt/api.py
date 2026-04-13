@@ -8,18 +8,10 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
-API_URL = os.getenv("OPENROUTER_API_URL", "https://openrouter.ai/api/v1/chat/completions")
-MODELS_URL = os.getenv("OPENROUTER_MODELS_URL", "https://openrouter.ai/api/v1/models")
-APP_TITLE = (
-    os.getenv("CLI_GPT_APP_TITLE")
-    or os.getenv("CLI_CHAT_APP_TITLE")
-    or "cli-gpt"
-)
-APP_REFERER = (
-    os.getenv("CLI_GPT_APP_REFERER")
-    or os.getenv("CLI_CHAT_APP_REFERER")
-    or "https://github.com/aoyn1xw/cli-gpt"
-)
+DEFAULT_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+DEFAULT_MODELS_URL = "https://openrouter.ai/api/v1/models"
+DEFAULT_APP_TITLE = "cli-gpt"
+DEFAULT_APP_REFERER = "https://github.com/aoyn1xw/cli-gpt"
 
 
 class MissingAPIKeyError(RuntimeError):
@@ -56,13 +48,13 @@ class OpenRouterClient:
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
-            "HTTP-Referer": APP_REFERER,
-            "X-Title": APP_TITLE,
+            "HTTP-Referer": get_app_referer(),
+            "X-Title": get_app_title(),
         }
 
         try:
             response = self.session.post(
-                API_URL,
+                get_api_url(),
                 json=payload,
                 headers=headers,
                 timeout=self.timeout,
@@ -83,12 +75,12 @@ class OpenRouterClient:
         """Fetch available models from the OpenRouter catalogue."""
         headers = {
             "Authorization": f"Bearer {self.api_key}",
-            "HTTP-Referer": APP_REFERER,
-            "X-Title": APP_TITLE,
+            "HTTP-Referer": get_app_referer(),
+            "X-Title": get_app_title(),
         }
         try:
             response = self.session.get(
-                MODELS_URL,
+                get_models_url(),
                 headers=headers,
                 timeout=self.timeout,
             )
@@ -149,6 +141,34 @@ def get_api_key() -> str:
             "Set it before running cli-gpt."
         )
     return key
+
+
+def get_api_url() -> str:
+    """Resolve the chat completion endpoint at call time."""
+    return os.getenv("OPENROUTER_API_URL", DEFAULT_API_URL)
+
+
+def get_models_url() -> str:
+    """Resolve the models endpoint at call time."""
+    return os.getenv("OPENROUTER_MODELS_URL", DEFAULT_MODELS_URL)
+
+
+def get_app_title() -> str:
+    """Resolve the app title header at call time."""
+    return (
+        os.getenv("CLI_GPT_APP_TITLE")
+        or os.getenv("CLI_CHAT_APP_TITLE")
+        or DEFAULT_APP_TITLE
+    )
+
+
+def get_app_referer() -> str:
+    """Resolve the app referer header at call time."""
+    return (
+        os.getenv("CLI_GPT_APP_REFERER")
+        or os.getenv("CLI_CHAT_APP_REFERER")
+        or DEFAULT_APP_REFERER
+    )
 
 
 def _is_model_free(pricing: Any) -> bool:
