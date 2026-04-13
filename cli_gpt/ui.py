@@ -19,6 +19,7 @@ from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from prompt_toolkit.layout.dimension import Dimension
 from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.styles import Style
+from rich import box
 from rich.console import Console
 from rich.panel import Panel
 
@@ -28,7 +29,10 @@ from .models import ModelManager
 
 SYSTEM_PROMPT = {
     "role": "system",
-    "content": "you are a General purpose AI assistant. Answer as concisely as possible. BUT DO MAKE UP FALSE FACTS IF YOU DONT KNOW THE ANSWER SAY YOU DONT KNOW IT",
+    "content": (
+        "You are a general purpose AI assistant. Answer as concisely as possible. "
+        "Do not make up facts. If you do not know the answer, say you do not know."
+    ),
 }
 
 
@@ -70,7 +74,7 @@ class ChatApp:
         self.session = session or PromptSession()
         self.model_manager = ModelManager()
         if initial_model:
-            self.model_manager.set_model(initial_model)
+            self.model_manager.set_model(initial_model, allow_unknown=True)
         self.state = ChatState()
         self.command_processor = CommandProcessor(self.model_manager)
         self._startup_messages: List[Tuple[str, str]] = []
@@ -97,6 +101,7 @@ class ChatApp:
 
     def run(self) -> None:
         with patch_stdout(raw=True):
+            self._print_banner()
             self._print_status("Ready")
             self._flush_startup_messages()
             while True:
@@ -150,17 +155,32 @@ class ChatApp:
         self.state.add_ai_message(response_text)
         self._print_ai_message(response_text)
         if response_text.strip() == "I need to check the web for this.":
-            follow_up = "Web search not implemented — free mode."
+            follow_up = "Web search not implemented in free mode."
             if self._use_rich_rendering:
-                self.console.print(f"[italic cyan]🔍 {follow_up}[/italic cyan]")
+                self.console.print(f"[italic cyan]{follow_up}[/italic cyan]")
             else:
                 self.console.print(follow_up)
+
+    def _print_banner(self) -> None:
+        if not self._use_rich_rendering:
+            self.console.print("cli-gpt | OpenRouter free models")
+            return
+
+        panel = Panel(
+            "[bold cyan]cli-gpt[/bold cyan]  [dim]OpenRouter free models[/dim]\n"
+            "[dim]Commands:[/dim] /list  /model  /clear  /help  /quit",
+            box=box.HEAVY,
+            padding=(1, 2),
+            border_style="cyan",
+        )
+        self.console.print(panel)
 
     def _print_status(self, status: str) -> None:
         model = self.model_manager.current_model
         if self._use_rich_rendering:
             panel = Panel.fit(
                 f"Model: [bold]{model}[/bold] | Status: [bold]{status}[/bold]",
+                box=box.ROUNDED,
                 style="cyan",
             )
             self.console.print(panel)
@@ -272,6 +292,7 @@ class ChatApp:
         current_model = self.model_manager.current_model
         filter_text = ""
         selected_index = 0
+        total_models = len(models)
 
         if current_model in models:
             selected_index = models.index(current_model)
@@ -349,8 +370,12 @@ class ChatApp:
         )
 
         # Instruction + footer panels ---------------------------------------
+        def title_text() -> List[Tuple[str, str]]:
+            visible = len(filtered_models())
+            return [("class:title", f"OpenRouter Free Models ({visible}/{total_models})")]
+
         title_window = Window(
-            FormattedTextControl(lambda: [("class:title", "Select a Model")]),
+            FormattedTextControl(title_text),
             height=1,
             align=WindowAlign.CENTER,
         )
@@ -359,7 +384,7 @@ class ChatApp:
                 lambda: [
                     (
                         "class:footer",
-                        "↑/↓ move • Enter select • Esc cancel • / search",
+                        "Up/Down move  Enter select  Esc cancel  / search",
                     )
                 ]
             ),
@@ -463,15 +488,15 @@ class ChatApp:
 
         style = Style.from_dict(
             {
-                "title": "bold",
+                "title": "bold fg:#00bcd4",
                 "model-list": "",
-                "model-list-container": "",
-                "model-list.current": "fg:cyan",
-                "model-list.selected": "reverse",
-                "model-list.selected-current": "reverse fg:cyan",
+                "model-list-container": "bg:#0b0f14",
+                "model-list.current": "fg:#00bcd4",
+                "model-list.selected": "reverse fg:#00bcd4",
+                "model-list.selected-current": "reverse fg:#00bcd4 bold",
                 "model-list.empty": "italic #888888",
                 "search.prompt": "fg:#888888",
-                "search.input": "",
+                "search.input": "fg:#e0e0e0",
                 "footer": "fg:#888888",
             }
         )

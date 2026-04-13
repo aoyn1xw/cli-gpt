@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from typing import Sequence
 
+from dotenv import load_dotenv
+
 from . import __version__
+from .api import MissingAPIKeyError, OpenRouterClient
 from .models import FREE_MODELS
 from .ui import run_cli
 
@@ -19,8 +23,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument(
         "--model",
-        choices=FREE_MODELS,
-        help=f"Select the initial model (default: {FREE_MODELS[0]}).",
+        help="Select the initial free-tier model (default: auto).",
     )
     parser.add_argument(
         "--list-models",
@@ -62,12 +65,28 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
 
     args = parser.parse_args(argv)
+    load_dotenv()
 
     if args.timeout is not None and args.timeout <= 0:
         parser.error("--timeout must be greater than zero seconds.")
 
     if args.list_models:
-        for name in FREE_MODELS:
+        api_key = args.api_key or os.getenv("OPENROUTER_API_KEY")
+        models = []
+        if api_key:
+            try:
+                client = OpenRouterClient(api_key=api_key, timeout=args.timeout or 45)
+                models = client.list_models(free_only=True)
+            except MissingAPIKeyError:
+                models = []
+            except Exception as exc:
+                print(f"Warning: failed to fetch live free models ({exc}).")
+
+        if not models:
+            print("Using bundled free model list (set OPENROUTER_API_KEY for live data).")
+            models = FREE_MODELS
+
+        for name in models:
             print(name)
         return 0
 
