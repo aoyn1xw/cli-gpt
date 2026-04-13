@@ -73,52 +73,12 @@ class OpenRouterClient:
 
     def list_models(self, *, free_only: bool = True) -> List[str]:
         """Fetch available models from the OpenRouter catalogue."""
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "HTTP-Referer": get_app_referer(),
-            "X-Title": get_app_title(),
-        }
-        try:
-            response = self.session.get(
-                get_models_url(),
-                headers=headers,
-                timeout=self.timeout,
-            )
-        except requests.RequestException as exc:  # pragma: no cover - network issue
-            raise RuntimeError(f"Network error while fetching models: {exc}") from exc
-
-        if not response.ok:
-            self._raise_api_error(response)
-
-        try:
-            payload = response.json()
-        except ValueError as exc:
-            raise RuntimeError("Unexpected model list response format.") from exc
-
-        data = payload.get("data")
-        if not isinstance(data, list):
-            raise RuntimeError("Model list payload missing 'data' array.")
-
-        models: List[str] = []
-        for item in data:
-            if not isinstance(item, dict):
-                continue
-            model_id = item.get("id")
-            if not isinstance(model_id, str):
-                continue
-            if free_only and not _is_model_free(item.get("pricing")):
-                continue
-            models.append(model_id)
-
-        # Preserve order but remove duplicates.
-        seen = set()
-        deduped: List[str] = []
-        for model_id in models:
-            if model_id in seen:
-                continue
-            seen.add(model_id)
-            deduped.append(model_id)
-        return deduped
+        return fetch_models_catalogue(
+            api_key=self.api_key,
+            timeout=self.timeout,
+            free_only=free_only,
+            session=self.session,
+        )
 
     @staticmethod
     def _raise_api_error(response: requests.Response) -> None:
@@ -143,35 +103,68 @@ def get_api_key() -> str:
     return key
 
 
-def get_api_url() -> str:
-    """Resolve the chat completion endpoint at call time."""
-    return os.getenv("OPENROUTER_API_URL", DEFAULT_API_URL)
+def fetch_models_catalogue(
+    *,
+    api_key: Optional[str] = None,
+    timeout: int = 45,
+    free_only: bool = True,
+    session: Optional[requests.Session] = None,
+) -> List[str]:
+    """Fetch model ids from OpenRouter, optionally without auth for public catalogue access."""
+    active_session = session or requests.Session()
+    headers = {
+        "HTTP-Referer": APP_REFERER,
+        "X-Title": APP_TITLE,
+    }
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    try:
+        response = active_session.get(
+            MODELS_URL,
+            headers=headers,
+            timeout=timeout,
+        )
+    except requests.RequestException as exc:  # pragma: no cover - network issue
+        raise RuntimeError(f"Network error while fetching models: {exc}") from exc
+
+    if not response.ok:
+        OpenRouterClient._raise_api_error(response)
+
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise RuntimeError("Unexpected model list response format.") from exc
+
+    data = payload.get("data")
+    if not isinstance(data, list):
+        raise RuntimeError("Model list payload missing 'data' array.")
+
+    models: List[str] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        model_id = item.get("id")
+        if not isinstance(model_id, str):
+            continue
+        if free_only and not _is_model_free(model_id=model_id, pricing=item.get("pricing")):
+            continue
+        models.append(model_id)
+
+    # Preserve order but remove duplicates.
+    seen = set()
+    deduped: List[str] = []
+    for model_id in models:
+        if model_id in seen:
+            continue
+        seen.add(model_id)
+        deduped.append(model_id)
+    return deduped
 
 
-def get_models_url() -> str:
-    """Resolve the models endpoint at call time."""
-    return os.getenv("OPENROUTER_MODELS_URL", DEFAULT_MODELS_URL)
-
-
-def get_app_title() -> str:
-    """Resolve the app title header at call time."""
-    return (
-        os.getenv("CLI_GPT_APP_TITLE")
-        or os.getenv("CLI_CHAT_APP_TITLE")
-        or DEFAULT_APP_TITLE
-    )
-
-
-def get_app_referer() -> str:
-    """Resolve the app referer header at call time."""
-    return (
-        os.getenv("CLI_GPT_APP_REFERER")
-        or os.getenv("CLI_CHAT_APP_REFERER")
-        or DEFAULT_APP_REFERER
-    )
-
-
-def _is_model_free(pricing: Any) -> bool:
+def _is_model_free(*, model_id: str, pricing: Any) -> bool:
+    if model_id.lower().endswith(":free"):
+        return True
     if not isinstance(pricing, dict):
         return False
     prompt_price = pricing.get("prompt")
