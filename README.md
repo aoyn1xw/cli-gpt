@@ -1,6 +1,6 @@
 # cli-gpt
 
-Terminal chat interface for OpenRouter’s free-tier models.
+Terminal chat interface for OpenRouter free-tier models.
 
 ## Features
 
@@ -21,7 +21,7 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-> ℹ️ Publishing to PyPI/pipx is coming soon. In the meantime you can build distributables locally (see below) and install them with `pipx install dist/cli_gpt-*.whl`.
+Publishing to PyPI/pipx is coming soon. In the meantime you can build distributables locally (see below) and install them with `pipx install dist/cli_gpt-*.whl`.
 
 ## Setup & Usage
 
@@ -35,17 +35,17 @@ pip install -e .
    cli-gpt
    ```
 
-The models listed in the selector are sourced live from the OpenRouter API. There is currently no web browsing capability; when a model cannot answer it will explicitly state so rather than fabricating information.
+The models listed in the selector are sourced live from the OpenRouter API when a key is available. There is currently no web browsing capability; when a model cannot answer it will explicitly state so rather than fabricating information.
 
 ### CLI options
 
-- `--list-models` – print the available models and exit.
-- `--model <name>` – start on a specific model from the free tier.
-- `--plain` – disable Rich formatting for minimal output.
-- `--timeout <seconds>` – override the 45 second request timeout.
-- `--api-key <value>` – provide an API key without using environment variables.
-- `--fullscreen` / `--no-fullscreen` – force or disable full-screen mode.
-- `--version` – print the application version and exit.
+- `--list-models` - print the available free models and exit (uses live data when possible).
+- `--model <name>` - start on a specific model from the free tier.
+- `--plain` - disable Rich formatting for minimal output.
+- `--timeout <seconds>` - override the 45 second request timeout.
+- `--api-key <value>` - provide an API key without using environment variables.
+- `--fullscreen` / `--no-fullscreen` - force or disable full-screen mode.
+- `--version` - print the application version and exit.
 
 ### Commands inside the app
 

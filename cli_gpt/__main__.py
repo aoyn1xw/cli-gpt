@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from typing import Sequence
+
+from dotenv import load_dotenv
 
 from . import __version__
 from .api import fetch_models_catalogue
@@ -74,6 +77,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
 
     args = parser.parse_args(argv)
+    load_dotenv()
 
     if args.timeout is not None and args.timeout <= 0:
         parser.error("--timeout must be greater than zero seconds.")

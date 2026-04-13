@@ -23,8 +23,8 @@ class ModelManager:
         if self.current_model not in self.available_models:
             self.current_model = self.available_models[0]
 
-    def set_model(self, name: str) -> None:
-        if name not in self.available_models:
+    def set_model(self, name: str, *, allow_unknown: bool = False) -> None:
+        if not allow_unknown and name not in self.available_models:
             raise ValueError(f"Model '{name}' is not available in free tier.")
         self.current_model = name
 

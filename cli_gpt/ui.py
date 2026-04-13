@@ -19,6 +19,7 @@ from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from prompt_toolkit.layout.dimension import Dimension
 from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.styles import Style
+from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
@@ -151,11 +152,25 @@ class ChatApp:
         self.state.add_ai_message(response_text)
         self._print_ai_message(response_text)
         if response_text.strip() == "I need to check the web for this.":
-            follow_up = "Web search not implemented — free mode."
+            follow_up = "Web search not implemented in free mode."
             if self._use_rich_rendering:
-                self.console.print(f"[italic cyan]🔍 {follow_up}[/italic cyan]")
+                self.console.print(f"[italic cyan]{follow_up}[/italic cyan]")
             else:
                 self.console.print(follow_up)
+
+    def _print_banner(self) -> None:
+        if not self._use_rich_rendering:
+            self.console.print("cli-gpt | OpenRouter free models")
+            return
+
+        panel = Panel(
+            "[bold cyan]cli-gpt[/bold cyan]  [dim]OpenRouter free models[/dim]\n"
+            "[dim]Commands:[/dim] /list  /model  /clear  /help  /quit",
+            box=box.HEAVY,
+            padding=(1, 2),
+            border_style="cyan",
+        )
+        self.console.print(panel)
 
     def _print_status(self, status: str) -> None:
         model = self.model_manager.current_model
@@ -348,6 +363,7 @@ class ChatApp:
         current_model = self.model_manager.current_model
         filter_text = ""
         selected_index = 0
+        total_models = len(models)
 
         if current_model in models:
             selected_index = models.index(current_model)
@@ -425,6 +441,10 @@ class ChatApp:
         )
 
         # Instruction + footer panels ---------------------------------------
+        def title_text() -> List[Tuple[str, str]]:
+            visible = len(filtered_models())
+            return [("class:title", f"OpenRouter Free Models ({visible}/{total_models})")]
+
         title_window = Window(
             FormattedTextControl(lambda: [("class:title", "Switch Model")]),
             height=1,
@@ -435,7 +455,7 @@ class ChatApp:
                 lambda: [
                     (
                         "class:footer",
-                        "↑/↓ move • Enter select • Esc cancel • / search",
+                        "Up/Down move  Enter select  Esc cancel  / search",
                     )
                 ]
             ),
@@ -539,7 +559,7 @@ class ChatApp:
 
         style = Style.from_dict(
             {
-                "title": "bold",
+                "title": "bold fg:#00bcd4",
                 "model-list": "",
                 "model-list-container": "bg:#0f172a",
                 "model-list.current": "fg:#22d3ee",
