@@ -2,35 +2,31 @@ from cli_gpt import __main__ as cli_main
 from cli_gpt.models import FREE_MODELS
 
 
-class FakeClient:
-    def __init__(self, api_key, timeout):
-        self.api_key = api_key
-        self.timeout = timeout
+def test_list_models_uses_bundled_fallback_on_fetch_error(monkeypatch, capsys):
+    def fake_fetch_models_catalogue(*, api_key, timeout, free_only):
+        raise RuntimeError("boom")
 
-    def list_models(self, free_only=True):
-        assert free_only is True
-        return ["live/model-a", "live/model-b"]
-
-
-def test_list_models_uses_bundled_fallback_without_api_key(capsys):
+    monkeypatch.setattr(cli_main, "fetch_models_catalogue", fake_fetch_models_catalogue)
     exit_code = cli_main.main(["--list-models"])
 
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "Using bundled free model list" in captured.out
-    for model in FREE_MODELS:
-        assert model in captured.out
+    assert captured.out.splitlines() == FREE_MODELS
 
 
-def test_list_models_uses_live_catalog_when_api_key_present(monkeypatch, capsys):
-    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
-    monkeypatch.setattr(cli_main, "OpenRouterClient", FakeClient)
+def test_list_models_uses_live_catalog_when_fetch_succeeds(monkeypatch, capsys):
+    def fake_fetch_models_catalogue(*, api_key, timeout, free_only):
+        assert api_key is None
+        assert timeout == 12
+        assert free_only is True
+        return ["live/model-a", "live/model-b"]
+
+    monkeypatch.setattr(cli_main, "fetch_models_catalogue", fake_fetch_models_catalogue)
 
     exit_code = cli_main.main(["--list-models", "--timeout", "12"])
 
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "Using bundled free model list" not in captured.out
     assert captured.out.splitlines() == ["live/model-a", "live/model-b"]

@@ -103,6 +103,34 @@ def get_api_key() -> str:
     return key
 
 
+def get_api_url() -> str:
+    """Resolve the chat completion endpoint at call time."""
+    return os.getenv("OPENROUTER_API_URL", DEFAULT_API_URL)
+
+
+def get_models_url() -> str:
+    """Resolve the models endpoint at call time."""
+    return os.getenv("OPENROUTER_MODELS_URL", DEFAULT_MODELS_URL)
+
+
+def get_app_title() -> str:
+    """Resolve the app title header at call time."""
+    return (
+        os.getenv("CLI_GPT_APP_TITLE")
+        or os.getenv("CLI_CHAT_APP_TITLE")
+        or DEFAULT_APP_TITLE
+    )
+
+
+def get_app_referer() -> str:
+    """Resolve the app referer header at call time."""
+    return (
+        os.getenv("CLI_GPT_APP_REFERER")
+        or os.getenv("CLI_CHAT_APP_REFERER")
+        or DEFAULT_APP_REFERER
+    )
+
+
 def fetch_models_catalogue(
     *,
     api_key: Optional[str] = None,
@@ -113,15 +141,15 @@ def fetch_models_catalogue(
     """Fetch model ids from OpenRouter, optionally without auth for public catalogue access."""
     active_session = session or requests.Session()
     headers = {
-        "HTTP-Referer": APP_REFERER,
-        "X-Title": APP_TITLE,
+        "HTTP-Referer": get_app_referer(),
+        "X-Title": get_app_title(),
     }
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
 
     try:
         response = active_session.get(
-            MODELS_URL,
+            get_models_url(),
             headers=headers,
             timeout=timeout,
         )
